@@ -29,6 +29,199 @@
   </style>
 <link type="text/css" rel="stylesheet" href="css/style.css"/>
 </head>
+<style>
+  #chat-button {
+    position: fixed; bottom: 20px; right: 20px; 
+    background: #8C9EC3; width: 60px; height: 60px; 
+    border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+    cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 1000;
+    transition: transform 0.3s;
+  }
+  #chat-button:hover { transform: scale(1.1); }
+
+  #chat-window {
+    display: none; position: fixed; bottom: 90px; right: 20px; 
+    width: 320px; height: 480px; background: white; border-radius: 15px; 
+    box-shadow: 0 5px 25px rgba(0,0,0,0.2); z-index: 1000; flex-direction: column; 
+    overflow: hidden; font-family: Arial, sans-serif;
+  }
+
+  .chat-header { 
+    background: #8C9EC3; color: white; padding: 15px; 
+    font-weight: bold; display: flex; justify-content: space-between; align-items: center; 
+  }
+
+  #chat-messages { 
+    flex: 1; padding: 15px; overflow-y: auto; background: #f9f9f9; 
+    display: flex; flex-direction: column; gap: 10px; 
+  }
+
+  .bot-msg { 
+    background: #e1e8f5; padding: 10px; border-radius: 10px 10px 10px 0; 
+    align-self: flex-start; font-size: 14px; max-width: 85%; color: #333;
+  }
+
+  .user-msg { 
+    background: #8C9EC3; color: white; padding: 10px; 
+    border-radius: 10px 10px 0 10px; align-self: flex-end; 
+    font-size: 14px; max-width: 85%; 
+  }
+
+  .chat-options { 
+    padding: 10px; display: flex; flex-wrap: wrap; 
+    gap: 8px; border-top: 1px solid #eee; background: white;
+  }
+
+  .chat-btn { 
+    background: white; border: 1px solid #8C9EC3; color: #8C9EC3; 
+    padding: 8px 12px; border-radius: 20px; font-size: 12px; 
+    cursor: pointer; transition: 0.3s; font-weight: bold;
+  }
+
+  .chat-btn:hover { background: #8C9EC3; color: white; }
+</style>
+<div id="fraj-chat-container">
+  <div id="chat-button" onclick="toggleChat()" style="
+    position: fixed; 
+    bottom: 30px; 
+    right: 20px; 
+    background: #8C9EC3; 
+    width: 70px;      /* Tamaño aumentado para móviles */
+    height: 70px;     /* Tamaño aumentado para móviles */
+    border-radius: 50%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    cursor: pointer; 
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4); 
+    z-index: 99999;   /* Máxima prioridad para que no se oculte */
+    transition: transform 0.2s ease-in-out;
+    border: 2px solid white;
+    -webkit-tap-highlight-color: transparent;
+  ">
+    <span style="font-size: 35px;">💬</span>
+  </div>
+
+  <div id="chat-window" style="
+    display: none; 
+    position: fixed; 
+    bottom: 110px; 
+    right: 20px; 
+    width: 85%;       /* Se adapta al ancho del móvil */
+    max-width: 350px; 
+    height: 500px; 
+    max-height: 70vh; /* No tapa toda la pantalla en móviles pequeños */
+    background: white; 
+    border-radius: 20px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
+    z-index: 99999; 
+    flex-direction: column; 
+    overflow: hidden; 
+    font-family: sans-serif;
+  ">
+    
+    <div style="background: #8C9EC3; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; font-weight: bold;">
+      <span style="font-size: 18px;">Asistente FRAJ</span>
+      <span onclick="toggleChat()" style="cursor: pointer; font-size: 30px; line-height: 0;">&times;</span>
+    </div>
+
+    <div id="chat-messages" style="flex: 1; padding: 20px; overflow-y: auto; background: #f4f7f9; display: flex; flex-direction: column; gap: 12px;">
+      <div style="background: #e1e8f5; padding: 12px; border-radius: 15px 15px 15px 0; align-self: flex-start; font-size: 15px; color: #333; line-height: 1.4; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+        ¡Hola! 👋 Bienvenidos a **FRAJ Inversiones**. <br><br>¿En qué podemos ayudaros hoy?
+      </div>
+    </div>
+
+    <div id="chat-options" style="padding: 15px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #eee; background: white;">
+      </div>
+  </div>
+</div>
+
+<script>
+  let chatData = { servicio: "", provincia: "", hipoteca: "" };
+
+  function toggleChat() {
+    const chat = document.getElementById('chat-window');
+    const btn = document.getElementById('chat-button');
+    const isVisible = (chat.style.display === 'flex');
+    
+    chat.style.display = isVisible ? 'none' : 'flex';
+    btn.style.transform = isVisible ? 'scale(1)' : 'scale(0.9)';
+    
+    if (!isVisible && chatData.servicio === "") {
+      renderStep1();
+    }
+  }
+
+  function addMsg(text, isUser = false) {
+    const msg = document.createElement('div');
+    msg.textContent = text;
+    msg.style.cssText = `
+      padding: 12px; border-radius: ${isUser ? '15px 15px 0 15px' : '15px 15px 15px 0'};
+      align-self: ${isUser ? 'flex-end' : 'flex-start'};
+      background: ${isUser ? '#8C9EC3' : '#e1e8f5'};
+      color: ${isUser ? 'white' : '#333'};
+      font-size: 15px; max-width: 85%; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    `;
+    const container = document.getElementById('chat-messages');
+    container.appendChild(msg);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function renderStep1() {
+    const opt = document.getElementById('chat-options');
+    opt.innerHTML = `
+      <button onclick="goStep2('¿Quieres vender?')" style="background: white; border: 2px solid #8C9EC3; color: #8C9EC3; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer;">¿Quieres vender?</button>
+      <button onclick="goStep2('¿Quieres comprar?')" style="background: white; border: 2px solid #8C9EC3; color: #8C9EC3; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer;">¿Quieres comprar?</button>
+      <button onclick="goStep2('¿Buscas alquiler?')" style="background: white; border: 2px solid #8C9EC3; color: #8C9EC3; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer;">¿Buscas alquiler?</button>
+    `;
+  }
+
+  function goStep2(choice) {
+    chatData.servicio = choice;
+    addMsg(choice, true);
+    document.getElementById('chat-options').innerHTML = "";
+    setTimeout(() => {
+      addMsg("Entendido. ¿En qué provincia se encuentra el inmueble?");
+      document.getElementById('chat-options').innerHTML = `
+        <button onclick="goStep3('Valencia')" style="background: white; border: 2px solid #8C9EC3; color: #8C9EC3; padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer;">Valencia</button>
+        <button onclick="goStep3('Castellón')" style="background: white; border: 2px solid #8C9EC3; color: #8C9EC3; padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer;">Castellón</button>
+        <button onclick="goStep3('Alicante')" style="background: white; border: 2px solid #8C9EC3; color: #8C9EC3; padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer;">Alicante</button>
+      `;
+    }, 600);
+  }
+
+  function goStep3(choice) {
+    chatData.provincia = choice;
+    addMsg(choice, true);
+    document.getElementById('chat-options').innerHTML = "";
+    setTimeout(() => {
+      addMsg("¿Tenéis ya la hipoteca aprobada?");
+      document.getElementById('chat-options').innerHTML = `
+        <div style="display: flex; gap: 10px;">
+          <button onclick="finish('SÍ')" style="flex: 1; background: white; border: 2px solid #8C9EC3; color: #8C9EC3; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer;">SÍ</button>
+          <button onclick="finish('NO')" style="flex: 1; background: white; border: 2px solid #8C9EC3; color: #8C9EC3; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer;">NO</button>
+        </div>
+      `;
+    }, 600);
+  }
+
+  function finish(choice) {
+    chatData.hipoteca = choice;
+    addMsg(choice, true);
+    document.getElementById('chat-options').innerHTML = "";
+    setTimeout(() => {
+      addMsg("¡Perfecto! Todo listo. Pulsa el botón verde para enviarnos los datos por WhatsApp y contactar con un asesor.");
+      
+      const tel = "34628648233";
+      const text = `Hola FRAJ Inversiones, me interesa: ${chatData.servicio}. Provincia: ${chatData.provincia}. Hipoteca: ${chatData.hipoteca}.`;
+      const url = `https://wa.me/${tel}?text=${encodeURIComponent(text)}`;
+      
+      document.getElementById('chat-options').innerHTML = `
+        <a href="${url}" target="_blank" style="background: #25D366; color: white; padding: 15px; border-radius: 12px; text-decoration: none; text-align: center; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(37,211,102,0.4);">🟢 ENVIAR WHATSAPP</a>
+      `;
+    }, 800);
+  }
+</script>
 <body>
     
   <!-- 2. encabezado -->
@@ -487,12 +680,8 @@
         </div>
         
         <div class="highlight-item">  
-          🔹 <strong>Gestión de Pisos Turísticos:</strong> Transformamos tu propiedad en una inversión rentable. Nos encargamos de la promoción, reservas, check-in/out, limpieza, mantenimiento y atención al huésped en toda la provincia de Valencia.
+          🔹 <strong>Nuestra misión:</strong> combinar conocimiento, experiencia y trato personalizado para que tu inversión sea segura, eficiente y productiva. Estamos en toda la Comunidad Valenciana.
         </div>
-      </div>
-      
-      <div class="mission-text">
-        💼 <strong>Nuestra misión:</strong> combinar conocimiento, experiencia y trato personalizado para que tu inversión sea segura, eficiente y productiva. Estamos en toda la Comunidad Valenciana.
       </div>
       
       <!-- SECCIÓN DE GUÍA DESCARGABLE (AHORA DESPUÉS DEL TEXTO) -->
@@ -1348,91 +1537,8 @@
     <!-- Primer servicio -->
     <div class="service">
       <div class="service-header">
-        <h3>🏡 Pisos Turísticos</h3>
-      </div>
-      
-      <div class="service-gallery">
-        <div class="service-img">
-          <img src="Turistico1.jpg" alt="Piso turístico">
-        </div>
-        <div class="service-img">
-          <img src="Turistico2.jpg" alt="Piso turístico">
-        </div>
-      </div>
-      
-      <div class="service-content">
-        <p>Especialistas en gestión integral de pisos turísticos en toda la provincia de Valencia
-        En FRAJ Inversiones Inmobiliarias, te ofrecemos un servicio integral y personalizado para sacar el máximo rendimiento a tu propiedad. Nos encargamos de todo el proceso, desde la compra, venta o alquiler, hasta la gestión completa de tu piso turístico.</p>
-        
-        <div>🔹 Compra y venta de propiedades
-        Te asesoramos en cada paso para garantizar operaciones seguras, rentables y adaptadas a tus objetivos.</div>
-
-        <div>🔹 Alquiler turístico profesional
-        Gestionamos tu vivienda para alquiler de corta estancia con todas las garantías legales y fiscales, maximizando la ocupación y beneficios.</div>
-
-        <div>🔹 Gestión integral
-        Nos ocupamos de la promoción, reservas, check-in/out, limpieza, mantenimiento y atención al huésped. Tú solo te ocupas de recibir los beneficios.</div>
-
-        <div>🔹 Cobertura en toda la provincia de Valencia
-        Desde el centro histórico de Valencia hasta pueblos costeros y rurales, adaptamos nuestras estrategias a cada zona para atraer al mejor perfil de turista.</div>
-
-        <div>📈 Convierte tu propiedad en una inversión rentable y sin complicaciones. En FRAJ, trabajamos para que tu inmueble trabaje por ti.</div>
-      </div>
-    </div>
-    
-    <!-- Segundo servicio -->
-    <div class="service">
-      <h3>🧠 Coaching Inmobiliario</h3>
-      
-      <div class="service-gallery">
-        <div class="service-img">
-          <img src="https://www.institutrocafort.com/wp-content/uploads/2015/11/metodologia-institut-rocafort.jpg" alt="Coaching">
-        </div>
-        <div class="service-img">
-          <img src="https://rocioggasque.com/wp-content/uploads/2024/05/estrategias-profesional-sector-inmobiliario.webp" alt="Inmobiliaria-2">
-        </div>
-      </div>
-      
-      <div class="service-content">
-        <p>Transforma tu carrera y acelera tus resultados en el sector inmobiliario
-        ¿Eres agente inmobiliario, emprendedor del sector o quieres iniciarte con éxito en el mundo de los bienes raíces?</p>
-        
-        <br>
-        <p>Soy Pedro Fraj, experto inmobiliario con más de 10 años de experiencia en compra, venta, inversión y negociación de propiedades, y te ofrezco un servicio de coaching personalizado diseñado para llevar tu carrera al siguiente nivel.</p>
-        
-        <div>🔹 Coaching 1 a 1 personalizado
-        Diagnóstico de tu situación actual, definición de objetivos claros y acompañamiento estratégico para lograr resultados medibles.</div>
-        
-        <div>🔹 Estrategias de captación y cierre
-        Te enseño a captar propiedades efectivas, a identificar al cliente ideal y a cerrar operaciones con seguridad y profesionalismo.</div>
-        
-        <div>🔹 Mentalidad y liderazgo comercial
-        Desarrollamos juntos tu mentalidad ganadora, enfoque en objetivos y liderazgo para destacar en un mercado competitivo.</div>
-        
-        <div>🔹 Formación práctica basada en experiencia real
-        Todo lo que comparto está basado en años de experiencia directa en el sector, con técnicas que realmente funcionan.</div>
-        
-        <div>🔹 Ideal para agentes independientes, equipos comerciales y nuevos profesionales</div>
-        <br>
-        <p>🎯 No necesitas suerte, necesitas estrategia.
-        Yo te enseño cómo construirla.Solicita una sesión de diagnóstico gratuita y comienza tu transformación hoy.</p>
-      </div>
-    </div>
-    
-    <!-- Tercer servicio -->
-    <div class="service">
-      <h3>🏡 Compra, venta y alquiler de propiedades</h3>
-      
-      <div class="service-gallery">
-        <div class="service-img">
-          <img src="Poster.png" alt="Poster">
-        </div>
-        <div class="service-img">
-          <img src="piso.jpg" alt="Piso">
-        </div>
-      </div>
-      
-      <div class="service-content">
+        <h3> 🏠Gestión inmobiliaria integral</h3>
+        <div class="service-content">
         <p>Soy Pedro Fraj, agente inmobiliario con experiencia en el mercado de la Comunidad Valenciana. Ofrezco un servicio cercano, transparente y eficiente para quienes buscan comprar, vender o alquilar su vivienda con total confianza.</p>
         
         <br>
@@ -1449,6 +1555,43 @@
         <br>
         <p>📞 Contacta conmigo y empieza a gestionar tu propiedad de forma segura, rentable y sin complicaciones.</p>
       </div>
+        
+      </div>
+    </div>
+    
+    <!-- Segundo servicio -->
+    <div class="service">
+      <div class="service">
+      <h3>🧠 Coaching inmobiliario</h3>  
+      <div class="service-gallery">
+        <div class="service-img">
+          <img src="https://www.institutrocafort.com/wp-content/uploads/2015/11/metodologia-institut-rocafort.jpg" alt="Coaching">
+        </div>
+        <div class="service-img">
+          <img src="https://rocioggasque.com/wp-content/uploads/2024/05/estrategias-profesional-sector-inmobiliario.webp" alt="Inmobiliaria-2">
+        </div>
+      </div>
+      
+      <div class="service-content">
+        <p>Transforma tu carrera y acelera tus resultados en el sector inmobiliario. ¿Eres agente inmobiliario, emprendedor del sector o quieres iniciarte con éxito en el mundo de los bienes raíces?</p>
+        
+        <br>
+        <p>Somos expertos inmobiliarios con más de 10 años de experiencia en compra, venta, inversión y negociación de propiedades, y te ofrecemos un servicio de coaching personalizado diseñado para llevar tu carrera al siguiente nivel.</p>
+        
+        <div>🔹 Coaching 1 a 1 personalizado: Diagnóstico de tu situación actual, definición de objetivos claros y acompañamiento estratégico para lograr resultados medibles.</div>
+        
+        <div>🔹 Estrategias de captación y cierre: Te enseñamos a captar propiedades efectivas, a identificar al cliente ideal y a cerrar operaciones con seguridad y profesionalismo.</div>
+        
+        <div>🔹 Mentalidad y liderazgo comercial: Desarrollamos juntos tu mentalidad ganadora, enfoque en objetivos y liderazgo para destacar en un mercado competitivo.</div>
+        
+        <div>🔹 Formación práctica basada en experiencia real: Todo lo que compartimos está basado en años de experiencia directa en el sector, con técnicas que realmente funcionan.</div>
+        
+        <div>🔹 Ideal para agentes independientes, equipos comerciales y nuevos profesionales.</div>
+        <br>
+        <p>🎯 No necesitas suerte, necesitas estrategia. Nosotros te enseñamos cómo construirla. Solicita una sesión de diagnóstico gratuita y comienza tu transformación hoy.</p>
+      </div>
+    </div>
+    
     </div>
   </section>
 
@@ -1765,7 +1908,7 @@
     </div>
     <div id="cookies-content" class="footer-accordion-content">
       <p> ¿Qué son las cookies?
-      Las cookies son pequeños archivos de datos que se reciben en el terminal desde el sitio Web visitado y se usan para registrar ciertas interacciones de la navegación en un sitio Web almacenando datos que podrán ser actualizados y recuperados. Estos archivos se almacenan en el ordenador del usuario y contiene datos anónimos que no son perjudiciales para su equipo. Se utilizan para recordar las preferencias del usuario, como el idioma seleccionado, datos de acceso o personalización de la página.Las Cookies también pueden ser utilizadas para registrar información anónima acerca de cómo un visitante utiliza un sitio. Por ejemplo, desde qué página Web ha accedido, o si ha utilizado un "banner" publicitario para llegar.</p>
+      Las cookies son pequeños archivos de datos que se reciben en el terminal desde el sitio web visitado y se usan para registrar ciertas interacciones de la navegación en un sitio web almacenando datos que podrán ser actualizados y recuperados. Estos archivos se almacenan en el ordenador del usuario y contienen datos anónimos que no son perjudiciales para su equipo. Se utilizan para recordar las preferencias del usuario, como el idioma seleccionado, datos de acceso o personalización de la página. Las cookies también pueden ser utilizadas para registrar información anónima acerca de cómo un visitante utiliza un sitio. Por ejemplo, desde qué página web ha accedido, o si ha utilizado un "banner" publicitario para llegar.</p>
       
       <p><strong>¿Qué uso le damos a los diferentes tipos de cookies?</strong><br>
       Según su finalidad:</p>
@@ -1781,7 +1924,7 @@
       
       <div>
         <br>
-        <strong>Analíticas:</strong> Las cookies de análisis son las utilizadas para llevar a cabo el análisis anónimo del comportamiento de los usuarios de la web y que permiten medir la actividad del usuario y elaborar perfiles de navegación con el fin objetivo de mejorar los sitios web.
+        <strong>Analíticas:</strong> Las cookies de análisis son las utilizadas para llevar a cabo el análisis anónimo del comportamiento de los usuarios de la web y que permiten medir la actividad del usuario y elaborar perfiles de navegación con el objetivo de mejorar los sitios web.
       </div>
       
       <div>
@@ -1792,7 +1935,7 @@
       <p><strong>Según su plazo:</strong></p>
       
       <div>       
-        <strong>Cookies de sesión:</strong> Las cookies de sesión son aquellas que duran el tiempo que el usuario está navegando por la página Web y se borran al cerrar el navegador.
+        <strong>Cookies de sesión:</strong> Las cookies de sesión son aquellas que duran el tiempo que el usuario está navegando por la página web y se borran al cerrar el navegador.
       </div> 
       
       <div>
@@ -1815,6 +1958,21 @@
       Aviso Legal
     </div>
     <div id="legal-content" class="footer-accordion-content">
+      <p>Esta página web es propiedad de FRAJ INVERSORES SL con NIF nº BXXXX y domicilio Valencia (España) e inscrita en el Registro Mercantil de Valencia 01 folio 434 tomo 4.</p>
+      
+      <p>Para cualquier consulta o propuesta, contáctenos llamando al teléfono (+34) 628648233 o en el e-mail Fraj@frajinversores.com</p>
+      
+      <p>Esta página web se rige por la normativa exclusivamente aplicable en España, quedando sometida a ella, tanto nacionales como extranjeros que utilicen esta web.</p>
+      
+      <p>El acceso a nuestra página web por parte de la persona usuaria es gratuito y su uso se rige por las condiciones de uso vigentes en el momento del acceso, que rogamos lea detenidamente. Si la persona usuaria no estuviere de acuerdo con las presentes condiciones de uso, deberá abstenerse de utilizar este portal y operar por medio del mismo, pudiendo contactar con nosotros para que le resolvamos cualquier duda en relación a las mismas.</p>
+    </div>
+  </section>
+ 
+    
+    <div class="footer-accordion-title" onclick="toggleAccordion('legal')">
+      Aviso Legal
+    </div>
+    <div id="legal" class="footer-accordion-content">
       <p>Esta página Web es propiedad de FRAJ INVERSORES SL con NIF nº BXXXX y domicilio Valencia(España) e Inscrita en el Registro Mercantil de Valencia 01 folio 434 tomo 4.</p>
       
       <p>Para cualquier consulta o propuesta, contáctenos llamando al teléfono (+34) 628648233 o en el e-mail Fraj@frajinversores.com</p>
@@ -1823,8 +1981,7 @@
       
       <p>El acceso a nuestra página Web por parte de la PERSONA USUARIA es gratuito y su uso se rige por las condiciones de uso vigentes en el momento del acceso, que rogamos lea detenidamente. Si la PERSONA USUARIA no estuviere de acuerdo con las presentes condiciones de uso, deberá abstenerse de utilizar este portal y operar por medio del mismo, pudiendo contactar con nosotros para que le resolvamos cualquier duda en relación a las mismas.</p>
     </div>
-  </section>
-  
+
   <section class="footer-bottom">
     <p>2025 Fraj Inversiones inmobiliarias - Todos los derechos reservados</p>
   </section>
